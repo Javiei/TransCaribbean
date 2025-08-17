@@ -25,9 +25,10 @@ const App = () => {
   };
 
   const handleClientSubmit = (clientData) => {
-    console.log('Datos de factura a guardar:', { route: selectedRoute, ...clientData, type: operationType });
-    // Aquí iría la lógica para guardar en Excel/Google Sheets
-    setCurrentPage('success');
+    if (clientData.success) {
+      setCurrentPage('success');
+    }
+    // Si hay error, se maneja en el componente ClientForm
   };
 
   const handleBack = () => {

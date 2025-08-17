@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import SharedButton from './SharedButton';
 import SharedInput from './SharedInput';
-import { defaultRoutes } from '../mock/routes';
+import ApiService from '../utils/api';
 
 const RouteSelection = ({ onSelectRoute = () => {}, onBack = () => {}, operationType = 'import' }) => {
-  const [routes, setRoutes] = useState(defaultRoutes);
+  const [routes, setRoutes] = useState(ApiService.getRutas());
   const [newRoute, setNewRoute] = useState('');
 
   const handleAddRoute = () => {

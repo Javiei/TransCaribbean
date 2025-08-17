@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import SharedButton from './SharedButton';
 import SharedInput from './SharedInput';
-import { defaultClients } from '../mock/clients';
+import ApiService from '../utils/api';
 
 const ClientForm = ({ onClientSubmit = () => {}, onBack = () => {}, operationType = 'import' }) => {
   const [isNewClient, setIsNewClient] = useState(true);
   const [selectedClient, setSelectedClient] = useState('');
+  const [clients, setClients] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [rnc, setRnc] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -14,14 +16,26 @@ const ClientForm = ({ onClientSubmit = () => {}, onBack = () => {}, operationTyp
   const [price, setPrice] = useState('');
   const [invoiceDate, setInvoiceDate] = useState('');
 
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        const clientsData = await ApiService.getClientes();
+        setClients(clientsData);
+      } catch (error) {
+        console.error('Error fetching clients:', error);
+      }
+    };
+    fetchClients();
+  }, []);
+
   const handleClientSelection = (e) => {
     const clientId = e.target.value;
     setSelectedClient(clientId);
-    const client = defaultClients.find(c => c.id === clientId);
+    const client = clients.find(c => c.id === clientId);
     if (client) {
-      setRnc(client.rnc);
-      setName(client.name);
-      setPhone(client.phone);
+      setRnc(client.rnc || '');
+      setName(client.nombre || '');
+      setPhone(client.telefono || '');
     } else {
       setRnc('');
       setName('');
@@ -29,18 +43,38 @@ const ClientForm = ({ onClientSubmit = () => {}, onBack = () => {}, operationTyp
     }
   };
 
-  const handleSubmit = () => {
-    const clientData = {
-      rnc: isNewClient ? rnc : defaultClients.find(c => c.id === selectedClient)?.rnc,
-      name: isNewClient ? name : defaultClients.find(c => c.id === selectedClient)?.name,
-      phone: isNewClient ? phone : defaultClients.find(c => c.id === selectedClient)?.phone,
-      ncf,
-      fulgonNumber,
-      price,
-      invoiceDate,
-      type: operationType,
-    };
-    onClientSubmit(clientData);
+  const handleSubmit = async () => {
+    setLoading(true);
+    try {
+      let clientId = selectedClient;
+      
+      // Si es un cliente nuevo, crearlo primero
+      if (isNewClient) {
+        const newClient = await ApiService.createCliente({
+          nombre: name,
+          telefono: phone,
+          email: '', // Campo requerido por la BD
+          rnc: rnc
+        });
+        clientId = newClient.id;
+      }
+
+      // Crear la factura
+      const facturaData = {
+        cliente_id: clientId,
+        total: parseFloat(price),
+        fecha: invoiceDate,
+        detalle: `NCF: ${ncf}, Fulgón: ${fulgonNumber}, Tipo: ${operationType}`
+      };
+
+      await ApiService.createFactura(facturaData);
+      onClientSubmit({ success: true });
+    } catch (error) {
+      console.error('Error saving data:', error);
+      alert('Error al guardar los datos. Por favor, inténtalo de nuevo.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -77,9 +111,9 @@ const ClientForm = ({ onClientSubmit = () => {}, onBack = () => {}, operationTyp
               className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-red-800 transition duration-300 ease-in-out"
             >
               <option value="">-- Selecciona un cliente --</option>
-              {defaultClients.map(client => (
+              {clients.map(client => (
                 <option key={client.id} value={client.id}>
-                  {client.name} (RNC: {client.rnc})
+                  {client.nombre} (RNC: {client.rnc || 'N/A'})
                 </option>
               ))}
             </select>
@@ -103,9 +137,10 @@ const ClientForm = ({ onClientSubmit = () => {}, onBack = () => {}, operationTyp
 
         <SharedButton
           onClick={handleSubmit}
-          className="bg-red-800 text-white hover:bg-red-900 mb-4"
+          disabled={loading}
+          className="bg-red-800 text-white hover:bg-red-900 mb-4 disabled:opacity-50"
         >
-          Guardar Factura
+          {loading ? 'Guardando...' : 'Guardar Factura'}
         </SharedButton>
         <SharedButton
           onClick={onBack}

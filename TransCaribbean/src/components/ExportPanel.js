@@ -1,25 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import SharedButton from './SharedButton';
+import ApiService from '../utils/api';
 
 const ExportPanel = ({ onBack = () => {}, onStartExportForm = () => {} }) => {
-  // Función real para descargar Excel
+  const [downloading, setDownloading] = useState(false);
+
+  // Función real para descargar Excel usando la API
   const descargarExcel = async () => {
     try {
-      const response = await fetch('/api/facturas/excel', {
-        method: 'GET'
-      });
-      if (!response.ok) throw new Error('Error al descargar el Excel');
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'facturas.xlsx';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
+      setDownloading(true);
+      await ApiService.downloadExcel();
     } catch (err) {
-      alert('No se pudo exportar el Excel');
+      alert('No se pudo exportar el Excel. Verifica que el backend esté funcionando.');
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -38,9 +32,10 @@ const ExportPanel = ({ onBack = () => {}, onStartExportForm = () => {} }) => {
           </SharedButton>
           <SharedButton
             onClick={descargarExcel}
-            className="bg-gray-100 text-gray-800 hover:bg-gray-200 border border-gray-200"
+            disabled={downloading}
+            className="bg-gray-100 text-gray-800 hover:bg-gray-200 border border-gray-200 disabled:opacity-50"
           >
-            Exportar a Excel
+            {downloading ? 'Descargando...' : 'Exportar a Excel'}
           </SharedButton>
           <SharedButton
             onClick={() => alert('Exportando a Google Sheets... (Funcionalidad no implementada)')}
