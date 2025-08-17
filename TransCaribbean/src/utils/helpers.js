@@ -9,24 +9,38 @@ export const processInvoiceData = (invoices = [], routes = []) => {
   const clientSales = {};
   const routeSales = {};
 
+  // Inicializar rutas con 0
   routes.forEach(route => {
     routeSales[route] = 0;
   });
 
+  // Procesar facturas de la base de datos
   invoices.forEach(invoice => {
-    const month = new Date(invoice.invoiceDate).getMonth();
-    monthlySales[month] += invoice.price;
+    // Extraer mes de la fecha (formato: YYYY-MM-DD)
+    const month = new Date(invoice.fecha).getMonth();
+    monthlySales[month] += parseFloat(invoice.total) || 0;
 
-    if (clientSales[invoice.name]) {
-      clientSales[invoice.name] += invoice.price;
+    // Extraer información del cliente del detalle
+    // El detalle tiene formato: "NCF: XXX, Fulgón: XXX, Tipo: import/export"
+    const detalle = invoice.detalle || '';
+    const tipoMatch = detalle.match(/Tipo: (import|export)/i);
+    const tipo = tipoMatch ? tipoMatch[1] : 'unknown';
+    
+    // Para clientes, usamos el nombre del cliente que viene del JOIN
+    const clientKey = invoice.cliente_nombre || `Cliente ${invoice.cliente_id}`;
+    if (clientSales[clientKey]) {
+      clientSales[clientKey] += parseFloat(invoice.total) || 0;
     } else {
-      clientSales[invoice.name] = invoice.price;
+      clientSales[clientKey] = parseFloat(invoice.total) || 0;
     }
 
-    if (routeSales[invoice.route]) {
-      routeSales[invoice.route] += invoice.price;
+    // Para rutas, intentamos extraer del detalle o asignar por tipo
+    // Por ahora asignamos por tipo de operación
+    const routeKey = tipo === 'import' ? 'Importaciones' : 'Exportaciones';
+    if (routeSales[routeKey]) {
+      routeSales[routeKey] += parseFloat(invoice.total) || 0;
     } else {
-      routeSales[invoice.route] = invoice.price;
+      routeSales[routeKey] = parseFloat(invoice.total) || 0;
     }
   });
 

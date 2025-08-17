@@ -3,10 +3,16 @@ const router = express.Router();
 const pool = require('../db');
 const ExcelJS = require('exceljs');
 
-// Obtener todas las facturas
+// Obtener todas las facturas con información del cliente
 router.get('/', async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM facturas');
+    const [rows] = await pool.query(
+      `SELECT f.id, f.cliente_id, f.total, f.fecha, f.detalle, 
+              c.nombre AS cliente_nombre, c.rnc AS cliente_rnc
+       FROM facturas f 
+       LEFT JOIN clientes c ON f.cliente_id = c.id
+       ORDER BY f.fecha DESC`
+    );
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
